@@ -1,6 +1,7 @@
 #ifndef VM_VM_H
 #define VM_VM_H
 #include <stdbool.h>
+#include <hash.h>
 #include "threads/palloc.h"
 
 enum vm_type {
@@ -34,21 +35,23 @@ enum vm_type {
 struct page_operations;
 struct thread;
 
-#define VM_TYPE(type) ((type) & 7)
+#define VM_TYPE(type) ((type) & 7) 
 
-/* The representation of "page".
- * This is kind of "parent class", which has four "child class"es, which are
- * uninit_page, file_page, anon_page, and page cache (project4).
- * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
+/* "페이지"의 표현
+ * 이는 "부모 클래스"와 같으며, "자식 클래스"로  
+ * uninit_page, file_page, anon_page, page_cache(project4)가 있습니다.
+ * 이 구조체의 미리 정의된 멤버를 제거하거나 수정하지 마십시오. */
 struct page {
 	const struct page_operations *operations;
 	void *va;              /* Address in terms of user space */
-	struct frame *frame;   /* Back reference for frame */
+	struct frame *frame;   /* Back reference for frame: 프레임 역참조 */
 
 	/* Your implementation */
+	/** Project 3: Memory Management - 해시 객체 추가  */
+	struct hash_elem hash_elem;
 
-	/* Per-type data are binded into the union.
-	 * Each function automatically detects the current union */
+	/* 각 유형별 데이터가 union에 바인딩됩니다.
+	 * 각 함수는 자동으로 현재 union을 감지합니다. */
 	union {
 		struct uninit_page uninit;
 		struct anon_page anon;
@@ -65,10 +68,9 @@ struct frame {
 	struct page *page;
 };
 
-/* The function table for page operations.
- * This is one way of implementing "interface" in C.
- * Put the table of "method" into the struct's member, and
- * call it whenever you needed. */
+/* 페이지 작업을 위한 함수 테이블
+ * 이는 C에서 "인터페이스"를 구현하는 한 가지 방법입니다.
+ * "메서드" 테이블을 구조체의 멤버에 넣고 필요할 때 호출합니다. */
 struct page_operations {
 	bool (*swap_in) (struct page *, void *);
 	bool (*swap_out) (struct page *);
@@ -81,10 +83,12 @@ struct page_operations {
 #define destroy(page) \
 	if ((page)->operations->destroy) (page)->operations->destroy (page)
 
-/* Representation of current process's memory space.
- * We don't want to force you to obey any specific design for this struct.
+
+/* 현재 프로세스의 메모리 공간을 표현합니다.
+ * 이 구조체에 특정 디자인을 강제하지 않습니다. 
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash spt_hash; // 해시 테이블 사용
 };
 
 #include "threads/thread.h"

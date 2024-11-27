@@ -5,6 +5,10 @@
 #include "vm/inspect.h"
 #include <vaddr.h>
 
+/* global frame table & table start arr */
+static struct list frame_table; // 프레임 테이블을 나타내는 리스트 구조체
+static struct list_elem *frame_start; // 프레임 테이블의 시작 요소를 가리키는 포인터
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void
@@ -111,28 +115,44 @@ vm_get_victim (void) {
 	return victim;
 }
 
-/* Evict one page and return the corresponding frame.
- * Return NULL on error.*/
+/* 하나의 페이지를 내보내고 해당 프레임 반환.
+ * 오류가 발생하면 NULL을 반환. */
 static struct frame *
 vm_evict_frame (void) {
 	struct frame *victim UNUSED = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
+	
+	swap_out(victim->page);	// 스왑 아웃, 페이지 교체
 
 	return NULL;
 }
 
-/* palloc() and get frame. If there is no available page, evict the page
- * and return it. This always return valid address. That is, if the user pool
- * memory is full, this function evicts the frame to get the available memory
- * space.*/
+
+/* palloc()을 호출하고 프레임을 가져옵니다. 사용 가능한 페이지가 없으면
+ * 페이지를 내보내고 반환합니다. 이 함수는 항상 유효한 주소를 반환합니다.
+ * 즉, 사용자 풀 메모리가 가득 차 있는 경우, 이 함수는 프레임을 내보내
+ * 사용 가능한 메모리 공간을 확보한다. */
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = NULL;
-	/* TODO: Fill this function. */
+	/* TODO: Fill this function. 수정 */
 
-	ASSERT (frame != NULL);
-	ASSERT (frame->page == NULL);
-	return frame;
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+    ASSERT (frame != NULL);	// 프레임이 NULL이 아닌지 확인
+
+    frame->kva = palloc_get_page(PAL_USER);  // 실제 물리 페이지 할당
+    
+    if (frame->kva == NULL) {
+        free(frame);
+        frame = vm_evict_frame(); // 스왑 아웃
+        ASSERT (frame != NULL); // vm_evict_frame이 NULL을 반환하지 않는지 확인
+    } else {
+        list_push_back(&frame_table, &frame->frame_elem);	// 프레임 테이블에 추가
+    }
+    
+    frame->page = NULL;
+
+    ASSERT (frame->page == NULL);
+    return frame;
 }
 
 /* Growing the stack. */

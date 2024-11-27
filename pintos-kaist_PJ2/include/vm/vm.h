@@ -47,8 +47,7 @@ struct page {
 	struct frame *frame;   /* Back reference for frame: 프레임 역참조 */
 
 	/* Your implementation */
-	/** Project 3: Memory Management - 해시 객체 추가  */
-	struct hash_elem hash_elem;
+	struct hash_elem hash_elem;	// 해시 객체 추가
 
 	/* 각 유형별 데이터가 union에 바인딩됩니다.
 	 * 각 함수는 자동으로 현재 union을 감지합니다. */

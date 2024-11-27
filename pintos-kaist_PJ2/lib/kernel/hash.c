@@ -8,6 +8,7 @@
 #include "hash.h"
 #include "../debug.h"
 #include "threads/malloc.h"
+#include "vm/vm.h"
 
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
 	list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -392,3 +393,19 @@ remove_elem (struct hash *h, struct hash_elem *e) {
 	list_remove (&e->list_elem);
 }
 
+/* 페이지의 가상 주소를 해싱하여 반환. */
+uint64_t hash_func(const struct hash_elem *e, void *aux) {
+    const struct page *p = hash_entry(e, struct page, hash_elem);
+    return hash_bytes(&p->va, sizeof(p->va));
+}
+
+/*	페이지의 가상 주소를 비교하여 반환. */
+bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux) {
+    const struct page *pa = hash_entry(a, struct page, hash_elem);
+    const struct page *pb = hash_entry(b, struct page, hash_elem);
+    return pa->va < pb->va;
+}
+
+/**/
+void action_func(struct hash_elem *e, void *aux) {
+}

@@ -48,6 +48,7 @@ struct page {
 
 	/* Your implementation */
 	struct hash_elem hash_elem;	// 해시 객체 추가
+	bool writable;			// 페이지가 쓰기 가능한지
 
 	/* 각 유형별 데이터가 union에 바인딩됩니다.
 	 * 각 함수는 자동으로 현재 union을 감지합니다. */

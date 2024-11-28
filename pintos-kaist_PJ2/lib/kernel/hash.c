@@ -399,13 +399,15 @@ uint64_t hash_func(const struct hash_elem *e, void *aux) {
     return hash_bytes(&p->va, sizeof(p->va));
 }
 
-/*	페이지의 가상 주소를 비교하여 반환. */
+/* 페이지의 가상 주소를 비교하여 반환. */
 bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux) {
     const struct page *pa = hash_entry(a, struct page, hash_elem);
     const struct page *pb = hash_entry(b, struct page, hash_elem);
     return pa->va < pb->va;
 }
 
-/**/
-void action_func(struct hash_elem *e, void *aux) {
+/* 페이지를 해시 테이블에서 제거하고 메모리 해제. */
+void hash_destructor(struct hash_elem *e, void *aux) {
+    const struct page *p = hash_entry(e, struct page, hash_elem);
+    free(p);
 }

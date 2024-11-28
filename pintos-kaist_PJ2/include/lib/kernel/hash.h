@@ -100,7 +100,7 @@ uint64_t hash_int (int);
 // Project 3: VM 해시 테이블을 위한 함수들
 uint64_t hash_func(const struct hash_elem *e, void *aux);
 bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux);
-void action_func(struct hash_elem *e, void *aux);
-
+// void action_func(struct hash_elem *e, void *aux);
+void hash_destructor(struct hash_elem *e, void *aux);
 
 #endif /* lib/kernel/hash.h */

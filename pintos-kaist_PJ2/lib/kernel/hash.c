@@ -394,7 +394,7 @@ remove_elem (struct hash *h, struct hash_elem *e) {
 }
 
 /* 페이지의 가상 주소를 해싱하여 반환. */
-uint64_t hash_func(const struct hash_elem *e, void *aux) {
+uint64_t hash_func(const struct hash_elem *e, void *UNUSED) {
     const struct page *p = hash_entry(e, struct page, hash_elem);
     return hash_bytes(&p->va, sizeof(p->va));
 }
@@ -412,5 +412,6 @@ bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux) 
 /* 페이지를 해시 테이블에서 제거하고 메모리 해제. */
 void hash_destructor(struct hash_elem *e, void *aux) {
     const struct page *p = hash_entry(e, struct page, hash_elem);
+	destroy(p);
     free(p);
 }

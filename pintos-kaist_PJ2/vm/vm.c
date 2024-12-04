@@ -201,27 +201,28 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
-	struct page *page = NULL;
-	/* TODO: Validate the fault */
-	if (addr == NULL)
-		return false;
-	if (is_kernel_vaddr(addr))
-		return false;
+    struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
+    struct page *page = NULL;
+    /* TODO: Validate the fault */
+    if (addr == NULL)
+        return false;
+    if (is_kernel_vaddr(addr))
+        return false;
+    if (not_present)  // 접근한 메모리의 physical page가 존재하지 않은 경우
+    {
+        if (!vm_claim_page(addr)) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
 
-	// 페이지가 없는 경우
-	if (not_present) 
-	{
-		page = spt_find_page(spt, addr);
-		if (page == NULL)
-			return false;
-
-		// 페이지가 쓰기 권한이 없는 경우
-		if (write == 1 && page->writable == 0) 
-			return false;
-		return vm_do_claim_page(page);
-	}
-	return false;
+void hash_page_destroy(struct hash_elem *e, void *aux)
+{
+	struct page *page = hash_entry(e, struct page, hash_elem);
+	destroy(page);
+	free(page);
 }
 
 /* Free the page.
@@ -275,40 +276,36 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 
 	struct hash_iterator iter;
     struct page *src_page;
+	// enum vm_type src_type;
+
     hash_first(&iter, &src->spt_hash);
     while (hash_next(&iter)) {
         src_page = hash_entry(hash_cur(&iter), struct page, hash_elem);
-
-		// 페이지가 초기화되지 않은 경우
-		// 초기화 함수를 통해 페이지 할당
-        if (src_page->operations->type == VM_UNINIT) {  
-            if (!vm_alloc_page_with_initializer(page_get_type(src_page), 
-				src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux))
+		
+        if (src_page->operations->type == VM_UNINIT) {  // src 타입이 uninit인 경우
+            if (!vm_alloc_page_with_initializer(page_get_type(src_page), src_page->va, src_page->writable, src_page->uninit.init, src_page->uninit.aux))
                 return false;
             continue;
         }
 
-		// 페이지가 초기화된 경우
-        if (src_page->uninit.type & VM_MARKER_0) { 
-            setup_stack(&thread_current()->tf);	// 스택 설정
-            goto done; // 복사 완료
+        if (src_page->uninit.type & VM_MARKER_0) {  // src 페이지가 STACK인 경우
+            setup_stack(&thread_current()->tf);
+            goto done;
         }
-        
-        if (!vm_alloc_page(page_get_type(src_page), src_page->va, src_page->writable)) 
+
+        // src 타입이 anon인 경우
+        if (!vm_alloc_page(page_get_type(src_page), src_page->va, src_page->writable))  // src를 unint 페이지로 만들고 spt 삽입
             return false;
-    		
-		if (!vm_claim_page(src_page->va))  
+        if (!vm_claim_page(src_page->va))  // 물리 메모리와 매핑하고 initialize 한다
             return false;
-    done:  // 복사 완료
-		{
+
+    done:  // UNIT이 아닌 모든 페이지에 대응하는 물리 메모리 데이터 복사
         struct page *dst_page = spt_find_page(dst, src_page->va);
         memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
-    	}
-	}
+    }
 
     return true;
 }
-
 /* Free the resource hold by the supplemental page table */
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
@@ -325,9 +322,6 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
     //     }
     // }
 
-
-	if (&spt->spt_hash == NULL)
-        return;
-    
-	hash_destroy(&spt->spt_hash, hash_destructor);	// 보조 페이지 테이블(spt) 제거
+	// 해시 테이블 초기화
+	hash_clear(&spt->spt_hash, hash_destructor); 
 }

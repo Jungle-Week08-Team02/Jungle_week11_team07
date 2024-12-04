@@ -401,7 +401,10 @@ uint64_t hash_func(const struct hash_elem *e, void *aux) {
 
 /* 페이지의 가상 주소를 비교하여 반환. */
 bool less_func(const struct hash_elem *a, const struct hash_elem *b, void *aux) {
-    const struct page *pa = hash_entry(a, struct page, hash_elem);
+    if (a == NULL || b == NULL)
+    	return false;
+	
+	const struct page *pa = hash_entry(a, struct page, hash_elem);
     const struct page *pb = hash_entry(b, struct page, hash_elem);
     return pa->va < pb->va;
 }

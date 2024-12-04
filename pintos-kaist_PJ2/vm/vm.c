@@ -24,6 +24,7 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table); // 프레임 테이블 초기화
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -91,7 +92,7 @@ err:
 *  spt에서 va에 해당하는 페이지를 찾아 반환한다. */
 struct page *
 spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
-	struct page *page = NULL;
+	// struct page *page = NULL;
 	/* TODO: Fill this function. */
 
 	// 새 페이지 생성: 가상 주소를 해싱하기 위한 페이지. 
@@ -200,12 +201,27 @@ vm_handle_wp (struct page *page UNUSED) {
 bool
 vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		bool user UNUSED, bool write UNUSED, bool not_present UNUSED) {
-	struct supplemental_page_table *spt UNUSED = &thread_current ()->spt;
+	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
-	/* TODO: Your code goes here */
+	if (addr == NULL)
+		return false;
+	if (is_kernel_vaddr(addr))
+		return false;
 
-	return vm_do_claim_page (page);
+	// 페이지가 없는 경우
+	if (not_present) 
+	{
+		page = spt_find_page(spt, addr);
+		if (page == NULL)
+			return false;
+
+		// 페이지가 쓰기 권한이 없는 경우
+		if (write == 1 && page->writable == 0) 
+			return false;
+		return vm_do_claim_page(page);
+	}
+	return false;
 }
 
 /* Free the page.
@@ -284,9 +300,11 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		if (!vm_claim_page(src_page->va))  
             return false;
     done:  // 복사 완료
+		{
         struct page *dst_page = spt_find_page(dst, src_page->va);
         memcpy(dst_page->frame->kva, src_page->frame->kva, PGSIZE);
-    }
+    	}
+	}
 
     return true;
 }
@@ -296,15 +314,20 @@ void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
-	struct hash_iterator iter;
-    struct page *page = hash_entry(hash_cur(&iter), struct page, hash_elem);
+	// struct hash_iterator iter;
+    // struct page *page = hash_entry(hash_cur(&iter), struct page, hash_elem);
 
-    hash_first(&iter, &spt->spt_hash);
-    while (hash_next(&iter)) {
-        page = hash_entry(hash_cur(&iter), struct page, hash_elem);
-        if (page->operations->type == VM_FILE) {
-            do_munmap(page->va);	 // do_munmap 함수 호출로 매핑 해제
-        }
-    }
-    hash_destroy(&spt->spt_hash, hash_destructor);	// 보조 페이지 테이블(spt) 제거
+    // hash_first(&iter, &spt->spt_hash);
+    // while (hash_next(&iter)) {
+    //     page = hash_entry(hash_cur(&iter), struct page, hash_elem);
+    //     if (page->operations->type == VM_FILE) {
+    //         do_munmap(page->va);	 // do_munmap 함수 호출로 매핑 해제
+    //     }
+    // }
+
+
+	if (&spt->spt_hash == NULL)
+        return;
+    
+	hash_destroy(&spt->spt_hash, hash_destructor);	// 보조 페이지 테이블(spt) 제거
 }

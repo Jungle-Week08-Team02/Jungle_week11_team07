@@ -310,6 +310,12 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	#ifdef VM
+	    /** Project 3: Anonymous Page */
+	    supplemental_page_table_init(&thread_current()->spt);
+	#endif
+
+
 	char *temp, *save_ptr; //argv에 저장할 문자열 temp, strtok_r 함수를 사용하는 데에 필요한 문자열 save_ptr
 	char* argv[64]; //커맨드라인 받아낼 array argv
 	int argc = 0;
@@ -798,7 +804,11 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 
-	struct container *container = aux;
+	if (page == NULL)
+        return false;
+    struct container *container = (struct container *)aux;
+
+	// struct container *container = aux;
     struct file *file = container->file;
     off_t offset = container->offset;
     size_t page_read_bytes = container->page_read_bytes;
